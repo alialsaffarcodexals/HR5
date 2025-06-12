@@ -13,7 +13,7 @@ export default function Login() {
     setError('');
     if (username === 'AboSaber' && password === 'AboSaberWebsite') {
       localStorage.setItem('user', JSON.stringify({ username }));
-      navigate('/');
+      navigate('/dashboard');
     } else {
       setError('Invalid credentials');
     }
