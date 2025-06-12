@@ -89,20 +89,23 @@ index 0000000000000000000000000000000000000000..6f47bd17aeee22e102868be9f125ab80
 +export default connectDB;
 diff --git a/backend/controllers/authController.js b/backend/controllers/authController.js
 new file mode 100644
-index 0000000000000000000000000000000000000000..afeb4e1cd90e01e95f89b7818304918b294c37e2
+index 0000000000000000000000000000000000000000..7271bef4ad600f56ec26bdee4158e788d008d228
 --- /dev/null
 +++ b/backend/controllers/authController.js
-@@ -0,0 +1,21 @@
+@@ -0,0 +1,24 @@
 +import bcrypt from 'bcrypt';
 +import User from '../models/User.js';
 +
 +export const login = async (req, res) => {
 +  const { username, password } = req.body;
++  console.log('Login attempt:', username);
 +  const user = await User.findOne({ username });
++  console.log('User from DB:', user);
 +  if (!user)
 +    return res.status(400).json({ message: 'اسم المستخدم أو كلمة المرور غير صحيحة' });
 +
 +  const match = await bcrypt.compare(password, user.password);
++  console.log('Password match:', match);
 +  if (!match)
 +    return res.status(400).json({ message: 'اسم المستخدم أو كلمة المرور غير صحيحة' });
 +
