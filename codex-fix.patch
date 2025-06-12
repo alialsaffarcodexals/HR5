@@ -1,0 +1,1290 @@
+ (cd "$(git rev-parse --show-toplevel)" && git apply --3way <<'EOF' 
+diff --git a/.gitattributes b/.gitattributes
+new file mode 100644
+index 0000000000000000000000000000000000000000..9b77dda552caab22cc49d7ee626c453001ba65a0
+--- /dev/null
++++ b/.gitattributes
+@@ -0,0 +1,5 @@
++*.png binary
++*.jpg binary
++*.jpeg binary
++*.gif binary
++
+diff --git a/.gitignore b/.gitignore
+new file mode 100644
+index 0000000000000000000000000000000000000000..43d0f363b95d0a4276ea11edbf7790ef9b340f9c
+--- /dev/null
++++ b/.gitignore
+@@ -0,0 +1,7 @@
++node_modules
++frontend/dist
++backend/node_modules
++frontend/node_modules
++backend/package-lock.json
++frontend/package-lock.json
++
+diff --git a/README.md b/README.md
+index 54b2e679e5a3ee6ded3e9557ab90ab40637226a6..9279d3ca1c7d25be9bdb4ca704383cedcb7ad575 100644
+--- a/README.md
++++ b/README.md
+@@ -1 +1,35 @@
+-# MMlkatAlm3r8een
+\ No newline at end of file
++# مملكة المعرقين
++
++مشروع ويب مبسط يعمل محليًا ويشبه Discord بخصائص محدودة.
++
++## التشغيل
++
++1. **Backend**
++   ```bash
++   cd backend
++   npm install
++   npm start
++   ```
++   يتطلب MongoDB محلي على المنفذ الافتراضي.
++
++2. **Frontend**
++   ```bash
++   cd frontend
++   npm install
++   npm run dev
++   ```
++   ستعمل الواجهة على `http://localhost:3000`.
++
++يمكن مشاركة الموقع عبر عنوان Tailscale IP بعد تشغيل السيرفرين.
++
++## تحديث الفروع مع وجود ملفات ثنائية
++لدمج فرع `dev` في `main` عند وجود صور أو ملفات ثنائية يمكن استخدام الأمر التالي من الطرفية:
++```bash
++git checkout main
++git merge dev
++# في حال عدم وجود تعارضات سيتم الدمج مباشرة
++# إن ظهرت رسالة بخصوص "Binary files are not supported" فغالبًا تكون هناك تعارضات في ملفات ثنائية.
++# يمكن تخطي عرض الفروقات لهذه الملفات عبر ملف `.gitattributes` كما هو موجود في هذا المشروع.
++git push origin main
++```
++
+diff --git a/backend/config/db.js b/backend/config/db.js
+new file mode 100644
+index 0000000000000000000000000000000000000000..6f47bd17aeee22e102868be9f125ab80e9494fa8
+--- /dev/null
++++ b/backend/config/db.js
+@@ -0,0 +1,16 @@
++import mongoose from 'mongoose';
++
++const connectDB = async () => {
++  try {
++    await mongoose.connect('mongodb://localhost:27017/mamlakat', {
++      useNewUrlParser: true,
++      useUnifiedTopology: true,
++    });
++    console.log('MongoDB connected');
++  } catch (err) {
++    console.error(err.message);
++    process.exit(1);
++  }
++};
++
++export default connectDB;
+diff --git a/backend/controllers/authController.js b/backend/controllers/authController.js
+new file mode 100644
+index 0000000000000000000000000000000000000000..afeb4e1cd90e01e95f89b7818304918b294c37e2
+--- /dev/null
++++ b/backend/controllers/authController.js
+@@ -0,0 +1,21 @@
++import bcrypt from 'bcrypt';
++import User from '../models/User.js';
++
++export const login = async (req, res) => {
++  const { username, password } = req.body;
++  const user = await User.findOne({ username });
++  if (!user)
++    return res.status(400).json({ message: 'اسم المستخدم أو كلمة المرور غير صحيحة' });
++
++  const match = await bcrypt.compare(password, user.password);
++  if (!match)
++    return res.status(400).json({ message: 'اسم المستخدم أو كلمة المرور غير صحيحة' });
++
++  req.session.userId = user._id;
++  res.json({ message: 'login success', user });
++};
++
++export const logout = (req, res) => {
++  req.session.destroy();
++  res.json({ message: 'Logged out' });
++};
+diff --git a/backend/controllers/channelController.js b/backend/controllers/channelController.js
+new file mode 100644
+index 0000000000000000000000000000000000000000..ea7d3365229a1312cc8a0d603902f39fb6082b67
+--- /dev/null
++++ b/backend/controllers/channelController.js
+@@ -0,0 +1,30 @@
++import VoiceChannel from '../models/VoiceChannel.js';
++import TextChannel from '../models/TextChannel.js';
++
++export const getChannels = async (req, res) => {
++  const voices = await VoiceChannel.find();
++  const texts = await TextChannel.find();
++  res.json({ voices, texts });
++};
++
++export const addVoice = async (req, res) => {
++  const channel = new VoiceChannel(req.body);
++  await channel.save();
++  res.json(channel);
++};
++
++export const addText = async (req, res) => {
++  const channel = new TextChannel(req.body);
++  await channel.save();
++  res.json(channel);
++};
++
++export const deleteVoice = async (req, res) => {
++  await VoiceChannel.findByIdAndDelete(req.params.id);
++  res.json({ message: 'Deleted' });
++};
++
++export const deleteText = async (req, res) => {
++  await TextChannel.findByIdAndDelete(req.params.id);
++  res.json({ message: 'Deleted' });
++};
+diff --git a/backend/controllers/gameController.js b/backend/controllers/gameController.js
+new file mode 100644
+index 0000000000000000000000000000000000000000..ff58bdc702c9d5c1882c689b7e1d10011a4ab681
+--- /dev/null
++++ b/backend/controllers/gameController.js
+@@ -0,0 +1,12 @@
++import Game from '../models/Game.js';
++
++export const getGames = async (req, res) => {
++  const games = await Game.find();
++  res.json(games);
++};
++
++export const createGame = async (req, res) => {
++  const game = new Game(req.body);
++  await game.save();
++  res.json(game);
++};
+diff --git a/backend/controllers/shortcutController.js b/backend/controllers/shortcutController.js
+new file mode 100644
+index 0000000000000000000000000000000000000000..1677f21071601ba974708f4f3241611b45602f8d
+--- /dev/null
++++ b/backend/controllers/shortcutController.js
+@@ -0,0 +1,17 @@
++import Shortcut from '../models/Shortcut.js';
++
++export const getShortcuts = async (req, res) => {
++  const shortcuts = await Shortcut.find();
++  res.json(shortcuts);
++};
++
++export const addShortcut = async (req, res) => {
++  const shortcut = new Shortcut(req.body);
++  await shortcut.save();
++  res.json(shortcut);
++};
++
++export const deleteShortcut = async (req, res) => {
++  await Shortcut.findByIdAndDelete(req.params.id);
++  res.json({ message: 'Deleted' });
++};
+diff --git a/backend/controllers/userController.js b/backend/controllers/userController.js
+new file mode 100644
+index 0000000000000000000000000000000000000000..ca5c7232ff1e46012c8aa41755aeb59dffdb0c9a
+--- /dev/null
++++ b/backend/controllers/userController.js
+@@ -0,0 +1,48 @@
++import bcrypt from 'bcrypt';
++import User from '../models/User.js';
++
++export const getUsers = async (req, res) => {
++  const users = await User.find();
++  res.json(users);
++};
++
++export const addUser = async (req, res) => {
++  const { username, password, roles } = req.body;
++  if (!username || !password)
++    return res.status(400).json({ message: 'username and password required' });
++
++  const exists = await User.findOne({ username });
++  if (exists) return res.status(400).json({ message: 'Username already exists' });
++
++  const hash = await bcrypt.hash(password, 10);
++  const roleArr = roles
++    ? roles
++        .split(',')
++        .map(r => r.trim())
++        .filter(Boolean)
++    : [];
++  const profileImage = req.file ? req.file.filename : 'default.png';
++  const user = new User({ username, password: hash, roles: roleArr, profileImage });
++  await user.save();
++  res.json(user);
++};
++
++export const updateUser = async (req, res) => {
++  const { id } = req.params;
++  const { username, password, roles } = req.body;
++  const user = await User.findById(id);
++  if (!user) return res.status(404).json({ message: 'Not found' });
++  user.username = username || user.username;
++  if (password) user.password = await bcrypt.hash(password, 10);
++  if (roles) {
++    user.roles = roles.split(',').map(r => r.trim()).filter(Boolean);
++  }
++  if (req.file) user.profileImage = req.file.filename;
++  await user.save();
++  res.json(user);
++};
++
++export const deleteUser = async (req, res) => {
++  await User.findByIdAndDelete(req.params.id);
++  res.json({ message: 'Deleted' });
++};
+diff --git a/backend/middleware/authMiddleware.js b/backend/middleware/authMiddleware.js
+new file mode 100644
+index 0000000000000000000000000000000000000000..fe4cbf561c0ddeba920b0ddd0131bffdd76ec6bb
+--- /dev/null
++++ b/backend/middleware/authMiddleware.js
+@@ -0,0 +1,4 @@
++export const requireLogin = (req, res, next) => {
++  if (!req.session.userId) return res.status(401).json({ message: 'Unauthorized' });
++  next();
++};
+diff --git a/backend/models/Game.js b/backend/models/Game.js
+new file mode 100644
+index 0000000000000000000000000000000000000000..7c7d400ee7b45a8cb396b9a7c477c0461d063e36
+--- /dev/null
++++ b/backend/models/Game.js
+@@ -0,0 +1,8 @@
++import mongoose from 'mongoose';
++
++const gameSchema = new mongoose.Schema({
++  name: String,
++  data: Object,
++});
++
++export default mongoose.model('Game', gameSchema);
+diff --git a/backend/models/MemberPage.js b/backend/models/MemberPage.js
+new file mode 100644
+index 0000000000000000000000000000000000000000..eeb08e043a9385816d7ab10c3862aca26fcda216
+--- /dev/null
++++ b/backend/models/MemberPage.js
+@@ -0,0 +1,10 @@
++import mongoose from 'mongoose';
++
++const memberPageSchema = new mongoose.Schema({
++  user: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
++  bio: String,
++  images: [String],
++  videos: [String],
++});
++
++export default mongoose.model('MemberPage', memberPageSchema);
+diff --git a/backend/models/Shortcut.js b/backend/models/Shortcut.js
+new file mode 100644
+index 0000000000000000000000000000000000000000..5ccff0632ae100c3d7233f6c31c1750b2af34901
+--- /dev/null
++++ b/backend/models/Shortcut.js
+@@ -0,0 +1,9 @@
++import mongoose from 'mongoose';
++
++const shortcutSchema = new mongoose.Schema({
++  name: String,
++  url: String,
++  icon: String,
++});
++
++export default mongoose.model('Shortcut', shortcutSchema);
+diff --git a/backend/models/TextChannel.js b/backend/models/TextChannel.js
+new file mode 100644
+index 0000000000000000000000000000000000000000..072dcd34a131227c0e6b421026864d4df9183155
+--- /dev/null
++++ b/backend/models/TextChannel.js
+@@ -0,0 +1,8 @@
++import mongoose from 'mongoose';
++
++const textChannelSchema = new mongoose.Schema({
++  name: String,
++  allowedRoles: [String],
++});
++
++export default mongoose.model('TextChannel', textChannelSchema);
+diff --git a/backend/models/User.js b/backend/models/User.js
+new file mode 100644
+index 0000000000000000000000000000000000000000..5fd5964bbffc8dedeca1521bd215a4c8de6ffc42
+--- /dev/null
++++ b/backend/models/User.js
+@@ -0,0 +1,11 @@
++import mongoose from 'mongoose';
++
++const userSchema = new mongoose.Schema({
++  username: { type: String, unique: true },
++  password: String,
++  roles: [String],
++  profileImage: { type: String, default: 'default.png' },
++  about: String,
++});
++
++export default mongoose.model('User', userSchema);
+diff --git a/backend/models/VoiceChannel.js b/backend/models/VoiceChannel.js
+new file mode 100644
+index 0000000000000000000000000000000000000000..034dd989b4a2352a0c8fd965160b687d9c0712c0
+--- /dev/null
++++ b/backend/models/VoiceChannel.js
+@@ -0,0 +1,9 @@
++import mongoose from 'mongoose';
++
++const voiceChannelSchema = new mongoose.Schema({
++  name: String,
++  maxUsers: Number,
++  allowedRoles: [String],
++});
++
++export default mongoose.model('VoiceChannel', voiceChannelSchema);
+diff --git a/backend/package.json b/backend/package.json
+new file mode 100644
+index 0000000000000000000000000000000000000000..5d8a5a1d4fb8f7b97ec662d1b0ef730b5486718b
+--- /dev/null
++++ b/backend/package.json
+@@ -0,0 +1,18 @@
++{
++  "name": "mamlakat-alm3r8een-backend",
++  "version": "1.0.0",
++  "main": "server.js",
++  "type": "module",
++  "scripts": {
++    "start": "node server.js"
++  },
++  "dependencies": {
++    "bcrypt": "^5.1.0",
++    "cors": "^2.8.5",
++    "express": "^4.18.2",
++    "express-session": "^1.17.3",
++    "mongoose": "^7.5.0",
++    "socket.io": "^4.7.2",
++    "multer": "^1.4.5-lts.1"
++  }
++}
+diff --git a/backend/routes/auth.js b/backend/routes/auth.js
+new file mode 100644
+index 0000000000000000000000000000000000000000..d416a644c384857fb499e0fdab0f430fbb6d6b65
+--- /dev/null
++++ b/backend/routes/auth.js
+@@ -0,0 +1,7 @@
++import express from 'express';
++import { login, logout } from '../controllers/authController.js';
++
++const router = express.Router();
++router.post('/login', login);
++router.post('/logout', logout);
++export default router;
+diff --git a/backend/routes/channels.js b/backend/routes/channels.js
+new file mode 100644
+index 0000000000000000000000000000000000000000..32ad144704f46fdbfba0cffaef6d619649eb232e
+--- /dev/null
++++ b/backend/routes/channels.js
+@@ -0,0 +1,13 @@
++import express from 'express';
++import { getChannels, addVoice, addText, deleteVoice, deleteText } from '../controllers/channelController.js';
++import { requireLogin } from '../middleware/authMiddleware.js';
++
++const router = express.Router();
++
++router.get('/', requireLogin, getChannels);
++router.post('/voice', requireLogin, addVoice);
++router.post('/text', requireLogin, addText);
++router.delete('/voice/:id', requireLogin, deleteVoice);
++router.delete('/text/:id', requireLogin, deleteText);
++
++export default router;
+diff --git a/backend/routes/games.js b/backend/routes/games.js
+new file mode 100644
+index 0000000000000000000000000000000000000000..d5937c594d04d0c62680d4e189dffe08e55b08c6
+--- /dev/null
++++ b/backend/routes/games.js
+@@ -0,0 +1,10 @@
++import express from 'express';
++import { getGames, createGame } from '../controllers/gameController.js';
++import { requireLogin } from '../middleware/authMiddleware.js';
++
++const router = express.Router();
++
++router.get('/', requireLogin, getGames);
++router.post('/', requireLogin, createGame);
++
++export default router;
+diff --git a/backend/routes/shortcuts.js b/backend/routes/shortcuts.js
+new file mode 100644
+index 0000000000000000000000000000000000000000..99ad683b46f9b31a37aec8c2389e565681de1fec
+--- /dev/null
++++ b/backend/routes/shortcuts.js
+@@ -0,0 +1,11 @@
++import express from 'express';
++import { getShortcuts, addShortcut, deleteShortcut } from '../controllers/shortcutController.js';
++import { requireLogin } from '../middleware/authMiddleware.js';
++
++const router = express.Router();
++
++router.get('/', requireLogin, getShortcuts);
++router.post('/', requireLogin, addShortcut);
++router.delete('/:id', requireLogin, deleteShortcut);
++
++export default router;
+diff --git a/backend/routes/users.js b/backend/routes/users.js
+new file mode 100644
+index 0000000000000000000000000000000000000000..cad83d75f8d33ebc935511dec5899325ab6c8dc5
+--- /dev/null
++++ b/backend/routes/users.js
+@@ -0,0 +1,14 @@
++import express from 'express';
++import multer from 'multer';
++import { getUsers, addUser, updateUser, deleteUser } from '../controllers/userController.js';
++import { requireLogin } from '../middleware/authMiddleware.js';
++
++const router = express.Router();
++const upload = multer({ dest: 'backend/uploads/' });
++
++router.get('/', requireLogin, getUsers);
++router.post('/', requireLogin, upload.single('profileImage'), addUser);
++router.put('/:id', requireLogin, upload.single('profileImage'), updateUser);
++router.delete('/:id', requireLogin, deleteUser);
++
++export default router;
+diff --git a/backend/server.js b/backend/server.js
+new file mode 100644
+index 0000000000000000000000000000000000000000..9d14b3d145e3a910e7d6a317c23e79cf86456482
+--- /dev/null
++++ b/backend/server.js
+@@ -0,0 +1,50 @@
++import express from 'express';
++import session from 'express-session';
++import mongoose from 'mongoose';
++import cors from 'cors';
++import { Server } from 'socket.io';
++import http from 'http';
++
++import connectDB from './config/db.js';
++import authRoutes from './routes/auth.js';
++import { login, logout } from './controllers/authController.js';
++import userRoutes from './routes/users.js';
++import channelRoutes from './routes/channels.js';
++import shortcutRoutes from './routes/shortcuts.js';
++import gameRoutes from './routes/games.js';
++
++connectDB();
++const app = express();
++const server = http.createServer(app);
++export const io = new Server(server, { cors: { origin: '*' } });
++
++app.use(cors({ origin: 'http://localhost:3000', credentials: true }));
++app.use(express.json());
++app.use('/uploads', express.static('backend/uploads'));
++app.use(
++  session({ secret: 'secretkey', resave: false, saveUninitialized: true })
++);
++
++io.on('connection', socket => {
++  socket.on('join-voice', ({ room }) => {
++    socket.join(room);
++    socket.to(room).emit('user-joined', socket.id);
++    socket.on('signal', data => {
++      socket.to(room).emit('signal', { id: socket.id, data });
++    });
++    socket.on('disconnect', () => {
++      socket.to(room).emit('user-left', socket.id);
++    });
++  });
++});
++
++app.use('/api/auth', authRoutes);
++app.post('/api/login', login);
++app.post('/api/logout', logout);
++app.use('/api/users', userRoutes);
++app.use('/api/channels', channelRoutes);
++app.use('/api/shortcuts', shortcutRoutes);
++app.use('/api/games', gameRoutes);
++
++const PORT = process.env.PORT || 5000;
++server.listen(PORT, () => console.log(`Server running on ${PORT}`));
+diff --git a/frontend/index.html b/frontend/index.html
+new file mode 100644
+index 0000000000000000000000000000000000000000..5b7a59c9e5a29528cc7ce1783349d8beb40daa9f
+--- /dev/null
++++ b/frontend/index.html
+@@ -0,0 +1,12 @@
++<!DOCTYPE html>
++<html lang="en" class="dark">
++  <head>
++    <meta charset="UTF-8" />
++    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
++    <title>مملكة المعرقين</title>
++    <script type="module" src="/src/main.jsx"></script>
++  </head>
++  <body class="bg-gray-900 text-white">
++    <div id="root"></div>
++  </body>
++</html>
+diff --git a/frontend/package.json b/frontend/package.json
+new file mode 100644
+index 0000000000000000000000000000000000000000..fe97ceee2c6d6b37f065263e2a4009e4403ca71e
+--- /dev/null
++++ b/frontend/package.json
+@@ -0,0 +1,25 @@
++{
++  "name": "mamlakat-alm3r8een-frontend",
++  "version": "1.0.0",
++  "private": true,
++  "scripts": {
++    "dev": "vite",
++    "build": "vite build",
++    "serve": "vite preview"
++  },
++  "dependencies": {
++    "axios": "^1.5.0",
++    "react": "^18.2.0",
++    "react-dom": "^18.2.0",
++    "socket.io-client": "^4.7.2",
++    "react-router-dom": "^6.21.2",
++    "lucide-react": "^0.364.0"
++  },
++  "devDependencies": {
++    "@vitejs/plugin-react": "^4.0.0",
++    "vite": "^4.5.0",
++    "tailwindcss": "^3.3.3",
++    "postcss": "^8.4.16",
++    "autoprefixer": "^10.4.12"
++  }
++}
+diff --git a/frontend/postcss.config.js b/frontend/postcss.config.js
+new file mode 100644
+index 0000000000000000000000000000000000000000..12a703d900da8159c30e75acbd2c4d87ae177f62
+--- /dev/null
++++ b/frontend/postcss.config.js
+@@ -0,0 +1,6 @@
++module.exports = {
++  plugins: {
++    tailwindcss: {},
++    autoprefixer: {},
++  },
++};
+diff --git a/frontend/src/App.jsx b/frontend/src/App.jsx
+new file mode 100644
+index 0000000000000000000000000000000000000000..e8c93bff9e02ddb781ca9248bdbd9d82296c97f4
+--- /dev/null
++++ b/frontend/src/App.jsx
+@@ -0,0 +1,39 @@
++import { Routes, Route, Navigate } from 'react-router-dom';
++import Login from './pages/Login';
++import Dashboard from './pages/Dashboard';
++import UserHome from './pages/UserHome';
++import Users from './pages/Users';
++import Voice from './pages/Voice';
++import Chat from './pages/Chat';
++import Profiles from './pages/Profiles';
++import Games from './pages/Games';
++import Sites from './pages/Sites';
++import ProtectedRoute from './components/ProtectedRoute';
++import { useAuth } from './context/AuthContext';
++
++export default function App() {
++  const { isLoggedIn, role } = useAuth();
++  const defaultPath = role === 'admin' ? '/dashboard/users' : '/home';
++
++  return (
++    <Routes>
++      <Route path="/login" element={isLoggedIn ? <Navigate to={defaultPath} replace /> : <Login />} />
++      <Route element={<ProtectedRoute admin />}>
++        <Route path="/dashboard/*" element={<Dashboard />}>
++          <Route index element={<Navigate to="users" replace />} />
++          <Route path="users" element={<Users />} />
++          <Route path="voice" element={<Voice />} />
++          <Route path="chat" element={<Chat />} />
++          <Route path="profiles" element={<Profiles />} />
++          <Route path="games" element={<Games />} />
++          <Route path="sites" element={<Sites />} />
++        </Route>
++      </Route>
++      <Route element={<ProtectedRoute />}>
++        <Route path="/home" element={<UserHome />} />
++      </Route>
++      <Route path="/" element={<Navigate to={defaultPath} replace />} />
++      <Route path="*" element={<Navigate to="/" replace />} />
++    </Routes>
++  );
++}
+diff --git a/frontend/src/api.js b/frontend/src/api.js
+new file mode 100644
+index 0000000000000000000000000000000000000000..3eced696c5be35b4e6bed93e7549c6855a3fc022
+--- /dev/null
++++ b/frontend/src/api.js
+@@ -0,0 +1,8 @@
++import axios from 'axios';
++
++const api = axios.create({
++  baseURL: 'http://localhost:5000/api',
++  withCredentials: true,
++});
++
++export default api;
+diff --git a/frontend/src/components/Header.jsx b/frontend/src/components/Header.jsx
+new file mode 100644
+index 0000000000000000000000000000000000000000..3b8a71f680c8e082db27584a2479021406af15f1
+--- /dev/null
++++ b/frontend/src/components/Header.jsx
+@@ -0,0 +1,7 @@
++export default function Header({ title }) {
++  return (
++    <header className="bg-gray-800 rounded-2xl p-4 mb-4">
++      <h2 className="text-xl font-semibold">{title}</h2>
++    </header>
++  );
++}
+diff --git a/frontend/src/components/ProtectedRoute.jsx b/frontend/src/components/ProtectedRoute.jsx
+new file mode 100644
+index 0000000000000000000000000000000000000000..01a07d24feedccbbc71582a9204313e599b0f7ad
+--- /dev/null
++++ b/frontend/src/components/ProtectedRoute.jsx
+@@ -0,0 +1,11 @@
++import { Navigate, Outlet } from 'react-router-dom';
++import { useAuth } from '../context/AuthContext';
++
++export default function ProtectedRoute({ admin }) {
++  const { isLoggedIn, role } = useAuth();
++
++  if (!isLoggedIn) return <Navigate to="/login" replace />;
++  if (admin && role !== 'admin') return <Navigate to="/home" replace />;
++
++  return <Outlet />;
++}
+diff --git a/frontend/src/components/Sidebar.jsx b/frontend/src/components/Sidebar.jsx
+new file mode 100644
+index 0000000000000000000000000000000000000000..8bc873d965b765b7de033143adf1ee5a5ca71057
+--- /dev/null
++++ b/frontend/src/components/Sidebar.jsx
+@@ -0,0 +1,43 @@
++import { NavLink } from 'react-router-dom';
++import { Users, Mic, MessageSquare, UserCircle, Gamepad2, Globe, LogOut } from 'lucide-react';
++import { useAuth } from '../context/AuthContext';
++
++export default function Sidebar() {
++  const { logout } = useAuth();
++
++  const links = [
++    { to: '/dashboard/users', label: 'Users', icon: Users },
++    { to: '/dashboard/voice', label: 'Voice', icon: Mic },
++    { to: '/dashboard/chat', label: 'Chat', icon: MessageSquare },
++    { to: '/dashboard/profiles', label: 'Profiles', icon: UserCircle },
++    { to: '/dashboard/games', label: 'Games', icon: Gamepad2 },
++    { to: '/dashboard/sites', label: 'Sites', icon: Globe }
++  ];
++
++  return (
++    <aside className="bg-gray-800 text-gray-300 w-60 fixed inset-y-0 left-0 p-4 space-y-4">
++      <h1 className="text-2xl font-bold text-white mb-6">مملكة المعرقين</h1>
++      <nav className="space-y-1">
++        {links.map(({ to, label, icon: Icon }) => (
++          <NavLink
++            key={to}
++            to={to}
++            className={({ isActive }) =>
++              `flex items-center gap-2 p-2 rounded hover:bg-gray-700 ${isActive ? 'bg-gray-700 text-white' : ''}`
++            }
++          >
++            <Icon className="w-4 h-4" />
++            <span>{label}</span>
++          </NavLink>
++        ))}
++      </nav>
++      <button
++        onClick={logout}
++        className="flex items-center gap-2 p-2 text-sm text-gray-400 hover:text-white"
++      >
++        <LogOut className="w-4 h-4" />
++        Logout
++      </button>
++    </aside>
++  );
++}
+diff --git a/frontend/src/components/UsersPanel.jsx b/frontend/src/components/UsersPanel.jsx
+new file mode 100644
+index 0000000000000000000000000000000000000000..9ca87ab75fa0fae9de46dd836b721e87e3bd949f
+--- /dev/null
++++ b/frontend/src/components/UsersPanel.jsx
+@@ -0,0 +1,129 @@
++import { useEffect, useState } from 'react';
++import api from '../api';
++
++export default function UsersPanel() {
++  const [users, setUsers] = useState([]);
++  const [form, setForm] = useState({ username: '', password: '', roles: '', profileImage: null });
++  const [editing, setEditing] = useState(null);
++  const [editForm, setEditForm] = useState({ password: '', roles: '', profileImage: null });
++  const [error, setError] = useState('');
++
++  const fetchUsers = async () => {
++    const { data } = await api.get('/users');
++    setUsers(data);
++  };
++
++  useEffect(() => { fetchUsers(); }, []);
++
++  const handleAdd = async e => {
++    e.preventDefault();
++    const fd = new FormData();
++    fd.append('username', form.username);
++    fd.append('password', form.password);
++    fd.append('roles', form.roles);
++    if (form.profileImage) fd.append('profileImage', form.profileImage);
++    try {
++      await api.post('/users', fd);
++      setForm({ username: '', password: '', roles: '', profileImage: null });
++      setError('');
++      fetchUsers();
++    } catch (err) {
++      setError(err.response?.data?.message || 'Error adding user');
++    }
++  };
++
++  const handleUpdate = async id => {
++    const fd = new FormData();
++    if (editForm.password) fd.append('password', editForm.password);
++    if (editForm.roles) fd.append('roles', editForm.roles);
++    if (editForm.profileImage) fd.append('profileImage', editForm.profileImage);
++    await api.put(`/users/${id}`, fd);
++    setEditing(null);
++    setEditForm({ password: '', roles: '', profileImage: null });
++    fetchUsers();
++  };
++
++  const handleDelete = async id => {
++    if (!confirm('Delete user?')) return;
++    await api.delete(`/users/${id}`);
++    fetchUsers();
++  };
++
++  return (
++    <div>
++      <form onSubmit={handleAdd} className="bg-gray-800 p-4 rounded-2xl mb-4 grid gap-2 sm:grid-cols-5">
++        <input
++          className="p-2 rounded bg-gray-700 placeholder-gray-400"
++          placeholder="Username"
++          value={form.username}
++          onChange={e => setForm({ ...form, username: e.target.value })}
++        />
++        <input
++          type="password"
++          className="p-2 rounded bg-gray-700 placeholder-gray-400"
++          placeholder="Password"
++          value={form.password}
++          onChange={e => setForm({ ...form, password: e.target.value })}
++        />
++        <input
++          className="p-2 rounded bg-gray-700 placeholder-gray-400"
++          placeholder="Roles (comma separated)"
++          value={form.roles}
++          onChange={e => setForm({ ...form, roles: e.target.value })}
++        />
++        <input type="file" onChange={e => setForm({ ...form, profileImage: e.target.files[0] })} />
++        <button className="bg-blue-600 hover:bg-blue-700 rounded-md p-2" type="submit">Add</button>
++      </form>
++      {error && <p className="text-red-500 mb-4">{error}</p>}
++
++      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
++        {users.map(u => (
++          <div key={u._id} className="bg-gray-800 p-4 rounded-xl">
++            <img
++              src={`http://localhost:5000/uploads/${u.profileImage}`}
++              alt="avatar"
++              className="w-16 h-16 rounded-full object-cover mb-2"
++            />
++            <p className="font-bold">{u.username}</p>
++            <p className="text-sm text-gray-400 mb-2">{u.roles.join(', ')}</p>
++            {editing === u._id ? (
++              <div className="space-y-2">
++                <input
++                  type="password"
++                  className="w-full p-1 rounded bg-gray-700 placeholder-gray-400"
++                  placeholder="New Password"
++                  value={editForm.password}
++                  onChange={e => setEditForm({ ...editForm, password: e.target.value })}
++                />
++                <input
++                  className="w-full p-1 rounded bg-gray-700 placeholder-gray-400"
++                  placeholder="Roles"
++                  value={editForm.roles}
++                  onChange={e => setEditForm({ ...editForm, roles: e.target.value })}
++                />
++                <input type="file" onChange={e => setEditForm({ ...editForm, profileImage: e.target.files[0] })} />
++                <div className="flex gap-2">
++                  <button className="bg-blue-600 p-1 rounded" onClick={() => handleUpdate(u._id)}>
++                    Save
++                  </button>
++                  <button className="bg-gray-600 p-1 rounded" onClick={() => setEditing(null)}>
++                    Cancel
++                  </button>
++                </div>
++              </div>
++            ) : (
++              <div className="flex gap-2">
++                <button className="bg-blue-600 px-2 py-1 rounded" onClick={() => setEditing(u._id)}>
++                  Edit
++                </button>
++                <button className="bg-red-600 px-2 py-1 rounded" onClick={() => handleDelete(u._id)}>
++                  Delete
++                </button>
++              </div>
++            )}
++          </div>
++        ))}
++      </div>
++    </div>
++  );
++}
+diff --git a/frontend/src/context/AuthContext.jsx b/frontend/src/context/AuthContext.jsx
+new file mode 100644
+index 0000000000000000000000000000000000000000..a08b26031d7ea5fd036f0207e5070177d9a70dea
+--- /dev/null
++++ b/frontend/src/context/AuthContext.jsx
+@@ -0,0 +1,50 @@
++import { createContext, useContext, useEffect, useState } from 'react';
++import api from '../api';
++
++const AuthContext = createContext();
++
++export function AuthProvider({ children }) {
++  const [auth, setAuth] = useState({ isLoggedIn: false, role: null, user: null });
++
++  useEffect(() => {
++    const stored = localStorage.getItem('auth');
++    if (stored) {
++      setAuth(JSON.parse(stored));
++    }
++  }, []);
++
++  const login = async (username, password) => {
++    try {
++      const res = await api.post('/login', { username, password });
++      const user = res.data.user;
++      const role = user.roles.includes('admin') ? 'admin' : 'user';
++      const data = { isLoggedIn: true, role, user };
++      localStorage.setItem('auth', JSON.stringify(data));
++      setAuth(data);
++      return { success: true, role };
++    } catch (err) {
++      return {
++        success: false,
++        message: err.response?.data?.message || 'اسم المستخدم أو كلمة المرور غير صحيحة',
++      };
++    }
++  };
++
++  const logout = async () => {
++    try {
++      await api.post('/logout');
++    } catch (e) {
++      /* ignore */
++    }
++    localStorage.removeItem('auth');
++    setAuth({ isLoggedIn: false, role: null, user: null });
++  };
++
++  return (
++    <AuthContext.Provider value={{ ...auth, login, logout }}>
++      {children}
++    </AuthContext.Provider>
++  );
++}
++
++export const useAuth = () => useContext(AuthContext);
+diff --git a/frontend/src/index.css b/frontend/src/index.css
+new file mode 100644
+index 0000000000000000000000000000000000000000..dce418d76582b88f9705f7ed0c1106544272ce93
+--- /dev/null
++++ b/frontend/src/index.css
+@@ -0,0 +1,7 @@
++@tailwind base;
++@tailwind components;
++@tailwind utilities;
++
++body {
++  @apply bg-gray-900 text-white;
++}
+diff --git a/frontend/src/main.jsx b/frontend/src/main.jsx
+new file mode 100644
+index 0000000000000000000000000000000000000000..01ae47f28eed00a442cfb7d66139ace2f314739a
+--- /dev/null
++++ b/frontend/src/main.jsx
+@@ -0,0 +1,14 @@
++import React from 'react';
++import ReactDOM from 'react-dom/client';
++import { BrowserRouter } from 'react-router-dom';
++import App from './App';
++import './index.css';
++import { AuthProvider } from './context/AuthContext';
++
++ReactDOM.createRoot(document.getElementById('root')).render(
++  <BrowserRouter>
++    <AuthProvider>
++      <App />
++    </AuthProvider>
++  </BrowserRouter>
++);
+diff --git a/frontend/src/pages/Chat.jsx b/frontend/src/pages/Chat.jsx
+new file mode 100644
+index 0000000000000000000000000000000000000000..ee9b1589f0fbc31d8a78a71107eb9e1ac28a0def
+--- /dev/null
++++ b/frontend/src/pages/Chat.jsx
+@@ -0,0 +1,34 @@
++import { useState } from 'react';
++import Header from '../components/Header';
++
++export default function Chat() {
++  const [channels, setChannels] = useState([]);
++  const [name, setName] = useState('');
++
++  const add = e => {
++    e.preventDefault();
++    if (!name) return;
++    setChannels([...channels, name]);
++    setName('');
++  };
++
++  return (
++    <div>
++      <Header title="Text Channels" />
++      <form onSubmit={add} className="bg-gray-800 p-4 rounded-2xl mb-4 flex gap-2">
++        <input
++          className="flex-1 p-2 rounded bg-gray-700 placeholder-gray-400"
++          placeholder="Channel name"
++          value={name}
++          onChange={e => setName(e.target.value)}
++        />
++        <button className="bg-blue-600 hover:bg-blue-700 p-2 rounded-md" type="submit">Add</button>
++      </form>
++      <ul className="space-y-2">
++        {channels.map((c, i) => (
++          <li key={i} className="bg-gray-800 p-2 rounded-xl">{c}</li>
++        ))}
++      </ul>
++    </div>
++  );
++}
+diff --git a/frontend/src/pages/Dashboard.jsx b/frontend/src/pages/Dashboard.jsx
+new file mode 100644
+index 0000000000000000000000000000000000000000..d5e2752c675855cd2f01d0e6659877c3d8dc069c
+--- /dev/null
++++ b/frontend/src/pages/Dashboard.jsx
+@@ -0,0 +1,13 @@
++import Sidebar from '../components/Sidebar';
++import { Outlet } from 'react-router-dom';
++
++export default function Dashboard() {
++  return (
++    <div className="bg-[#0f172a] min-h-screen pl-60 text-white">
++      <Sidebar />
++      <main className="p-6">
++        <Outlet />
++      </main>
++    </div>
++  );
++}
+diff --git a/frontend/src/pages/Games.jsx b/frontend/src/pages/Games.jsx
+new file mode 100644
+index 0000000000000000000000000000000000000000..5377f79fe4f0f795f7ffa6633ab4de159f840058
+--- /dev/null
++++ b/frontend/src/pages/Games.jsx
+@@ -0,0 +1,34 @@
++import { useState } from 'react';
++import Header from '../components/Header';
++
++export default function Games() {
++  const [games, setGames] = useState([]);
++  const [name, setName] = useState('');
++
++  const add = e => {
++    e.preventDefault();
++    if (!name) return;
++    setGames([...games, name]);
++    setName('');
++  };
++
++  return (
++    <div>
++      <Header title="Games" />
++      <form onSubmit={add} className="bg-gray-800 p-4 rounded-2xl mb-4 flex gap-2">
++        <input
++          className="flex-1 p-2 rounded bg-gray-700 placeholder-gray-400"
++          placeholder="Game name"
++          value={name}
++          onChange={e => setName(e.target.value)}
++        />
++        <button className="bg-blue-600 hover:bg-blue-700 p-2 rounded-md" type="submit">Add</button>
++      </form>
++      <ul className="space-y-2">
++        {games.map((g, i) => (
++          <li key={i} className="bg-gray-800 p-2 rounded-xl">{g}</li>
++        ))}
++      </ul>
++    </div>
++  );
++}
+diff --git a/frontend/src/pages/Login.jsx b/frontend/src/pages/Login.jsx
+new file mode 100644
+index 0000000000000000000000000000000000000000..5cc5ffb057a61d03e4b3931c4c89ece4df470936
+--- /dev/null
++++ b/frontend/src/pages/Login.jsx
+@@ -0,0 +1,51 @@
++import { useState } from 'react';
++import { useNavigate } from 'react-router-dom';
++import { useAuth } from '../context/AuthContext';
++
++export default function Login() {
++  const [username, setUsername] = useState('');
++  const [password, setPassword] = useState('');
++  const [showPass, setShowPass] = useState(false);
++  const [error, setError] = useState('');
++  const navigate = useNavigate();
++  const { login } = useAuth();
++
++  const submit = async e => {
++    e.preventDefault();
++    const res = await login(username, password);
++    if (res.success) {
++      navigate(res.role === 'admin' ? '/dashboard' : '/home', { replace: true });
++    } else {
++      setError(res.message);
++    }
++  };
++
++  return (
++    <div className="min-h-screen flex items-center justify-center bg-gray-900 text-white">
++      <form onSubmit={submit} className="bg-gray-800 p-8 rounded-xl w-80 space-y-4">
++        <h1 className="text-2xl font-bold text-center">تسجيل الدخول</h1>
++        <input
++          type="text"
++          className="w-full p-2 rounded bg-gray-700 text-white placeholder-gray-400"
++          placeholder="Username"
++          value={username}
++          onChange={e => setUsername(e.target.value)}
++        />
++        <div className="relative">
++          <input
++            type={showPass ? 'text' : 'password'}
++            className="w-full p-2 rounded bg-gray-700 text-white placeholder-gray-400"
++            placeholder="Password"
++            value={password}
++            onChange={e => setPassword(e.target.value)}
++          />
++          <button type="button" onClick={() => setShowPass(s => !s)} className="absolute inset-y-0 right-0 flex items-center px-2">
++            {showPass ? '🙈' : '👁️'}
++          </button>
++        </div>
++        {error && <p className="text-red-500 text-sm text-center">{error}</p>}
++        <button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 p-2 rounded-md">Login</button>
++      </form>
++    </div>
++  );
++}
+diff --git a/frontend/src/pages/Profiles.jsx b/frontend/src/pages/Profiles.jsx
+new file mode 100644
+index 0000000000000000000000000000000000000000..628e658076855b596e8c6b315d7b666d33721351
+--- /dev/null
++++ b/frontend/src/pages/Profiles.jsx
+@@ -0,0 +1,34 @@
++import { useState } from 'react';
++import Header from '../components/Header';
++
++export default function Profiles() {
++  const [profiles, setProfiles] = useState([]);
++  const [name, setName] = useState('');
++
++  const add = e => {
++    e.preventDefault();
++    if (!name) return;
++    setProfiles([...profiles, name]);
++    setName('');
++  };
++
++  return (
++    <div>
++      <Header title="Profiles" />
++      <form onSubmit={add} className="bg-gray-800 p-4 rounded-2xl mb-4 flex gap-2">
++        <input
++          className="flex-1 p-2 rounded bg-gray-700 placeholder-gray-400"
++          placeholder="Profile name"
++          value={name}
++          onChange={e => setName(e.target.value)}
++        />
++        <button className="bg-blue-600 hover:bg-blue-700 p-2 rounded-md" type="submit">Add</button>
++      </form>
++      <ul className="space-y-2">
++        {profiles.map((p, i) => (
++          <li key={i} className="bg-gray-800 p-2 rounded-xl">{p}</li>
++        ))}
++      </ul>
++    </div>
++  );
++}
+diff --git a/frontend/src/pages/Sites.jsx b/frontend/src/pages/Sites.jsx
+new file mode 100644
+index 0000000000000000000000000000000000000000..429647f7aa08d7797a24fada59fb28683e02c94c
+--- /dev/null
++++ b/frontend/src/pages/Sites.jsx
+@@ -0,0 +1,46 @@
++import { useState } from 'react';
++import Header from '../components/Header';
++
++export default function Sites() {
++  const [sites, setSites] = useState([]);
++  const [name, setName] = useState('');
++  const [url, setUrl] = useState('');
++
++  const add = e => {
++    e.preventDefault();
++    if (!name || !url) return;
++    setSites([...sites, { name, url }]);
++    setName('');
++    setUrl('');
++  };
++
++  return (
++    <div>
++      <Header title="Sites" />
++      <form onSubmit={add} className="bg-gray-800 p-4 rounded-2xl mb-4 grid gap-2 sm:grid-cols-3">
++        <input
++          className="p-2 rounded bg-gray-700 placeholder-gray-400"
++          placeholder="Name"
++          value={name}
++          onChange={e => setName(e.target.value)}
++        />
++        <input
++          className="p-2 rounded bg-gray-700 placeholder-gray-400"
++          placeholder="URL"
++          value={url}
++          onChange={e => setUrl(e.target.value)}
++        />
++        <button className="bg-blue-600 hover:bg-blue-700 p-2 rounded-md" type="submit">Add</button>
++      </form>
++      <ul className="space-y-2">
++        {sites.map((s, i) => (
++          <li key={i} className="bg-gray-800 p-2 rounded-xl">
++            <a href={s.url} target="_blank" rel="noreferrer" className="underline">
++              {s.name}
++            </a>
++          </li>
++        ))}
++      </ul>
++    </div>
++  );
++}
+diff --git a/frontend/src/pages/UserHome.jsx b/frontend/src/pages/UserHome.jsx
+new file mode 100644
+index 0000000000000000000000000000000000000000..1be5f5d4ad8ac9473281e95af542e2920a0ae335
+--- /dev/null
++++ b/frontend/src/pages/UserHome.jsx
+@@ -0,0 +1,11 @@
++import { useAuth } from '../context/AuthContext';
++
++export default function UserHome() {
++  const { logout } = useAuth();
++  return (
++    <div className="min-h-screen flex flex-col items-center justify-center bg-gray-900 text-white">
++      <h1 className="text-3xl mb-4">Welcome</h1>
++      <button onClick={logout} className="bg-blue-600 hover:bg-blue-700 p-2 rounded-md">Logout</button>
++    </div>
++  );
++}
+diff --git a/frontend/src/pages/Users.jsx b/frontend/src/pages/Users.jsx
+new file mode 100644
+index 0000000000000000000000000000000000000000..df9c57d7e3f86df2a9ec9e06d0963ba31ec52a97
+--- /dev/null
++++ b/frontend/src/pages/Users.jsx
+@@ -0,0 +1,11 @@
++import Header from '../components/Header';
++import UsersPanel from '../components/UsersPanel';
++
++export default function Users() {
++  return (
++    <div>
++      <Header title="Users" />
++      <UsersPanel />
++    </div>
++  );
++}
+diff --git a/frontend/src/pages/Voice.jsx b/frontend/src/pages/Voice.jsx
+new file mode 100644
+index 0000000000000000000000000000000000000000..218a828d3b6bc5e768d251f32b8d01a2227c3c97
+--- /dev/null
++++ b/frontend/src/pages/Voice.jsx
+@@ -0,0 +1,34 @@
++import { useState } from 'react';
++import Header from '../components/Header';
++
++export default function Voice() {
++  const [channels, setChannels] = useState([]);
++  const [name, setName] = useState('');
++
++  const add = e => {
++    e.preventDefault();
++    if (!name) return;
++    setChannels([...channels, name]);
++    setName('');
++  };
++
++  return (
++    <div>
++      <Header title="Voice Channels" />
++      <form onSubmit={add} className="bg-gray-800 p-4 rounded-2xl mb-4 flex gap-2">
++        <input
++          className="flex-1 p-2 rounded bg-gray-700 placeholder-gray-400"
++          placeholder="Channel name"
++          value={name}
++          onChange={e => setName(e.target.value)}
++        />
++        <button className="bg-blue-600 hover:bg-blue-700 p-2 rounded-md" type="submit">Add</button>
++      </form>
++      <ul className="space-y-2">
++        {channels.map((c, i) => (
++          <li key={i} className="bg-gray-800 p-2 rounded-xl">{c}</li>
++        ))}
++      </ul>
++    </div>
++  );
++}
+diff --git a/frontend/tailwind.config.js b/frontend/tailwind.config.js
+new file mode 100644
+index 0000000000000000000000000000000000000000..0d52959c9773844ce6ccd0aa8e36418f76757125
+--- /dev/null
++++ b/frontend/tailwind.config.js
+@@ -0,0 +1,8 @@
++module.exports = {
++  content: ['./index.html', './src/**/*.{js,jsx}'],
++  darkMode: 'class',
++  theme: {
++    extend: {},
++  },
++  plugins: [],
++};
+diff --git a/frontend/vite.config.js b/frontend/vite.config.js
+new file mode 100644
+index 0000000000000000000000000000000000000000..556f5198df4f63fa42ca0e8fe409c8db27e727af
+--- /dev/null
++++ b/frontend/vite.config.js
+@@ -0,0 +1,9 @@
++import { defineConfig } from 'vite';
++import react from '@vitejs/plugin-react';
++
++export default defineConfig({
++  plugins: [react()],
++  server: {
++    port: 3000,
++  },
++});
+ 
+EOF
+)
