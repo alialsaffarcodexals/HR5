@@ -1,26 +1,21 @@
 import { useState } from 'react';
-import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 
 export default function Login() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const navigate = useNavigate();
 
-  const submit = async e => {
+  const submit = e => {
     e.preventDefault();
     setError('');
-    try {
-      const { data } = await axios.post('http://localhost:5000/api/auth/login', {
-        username,
-        password,
-      });
-      localStorage.setItem('user', JSON.stringify(data.user));
+    if (username === 'AboSaber' && password === 'AboSaberWebsite') {
+      localStorage.setItem('user', JSON.stringify({ username }));
       navigate('/');
-    } catch (err) {
-      const msg = err.response?.data?.message || 'Login failed';
-      setError(msg);
+    } else {
+      setError('Invalid credentials');
     }
   };
 
@@ -33,13 +28,22 @@ export default function Login() {
           value={username}
           onChange={e => setUsername(e.target.value)}
         />
-        <input
-          className="p-2 bg-gray-700 text-white placeholder-gray-400 rounded"
-          type="password"
-          placeholder="Password"
-          value={password}
-          onChange={e => setPassword(e.target.value)}
-        />
+        <div className="relative">
+          <input
+            className="p-2 bg-gray-700 text-white placeholder-gray-400 rounded w-full"
+            type={showPassword ? 'text' : 'password'}
+            placeholder="Password"
+            value={password}
+            onChange={e => setPassword(e.target.value)}
+          />
+          <button
+            type="button"
+            onClick={() => setShowPassword(s => !s)}
+            className="absolute inset-y-0 right-0 flex items-center px-2 text-gray-300"
+          >
+            {showPassword ? '🙈' : '👁️'}
+          </button>
+        </div>
         {error && <p className="text-red-500 text-sm">{error}</p>}
         <button className="bg-blue-600 p-2 rounded" type="submit">Login</button>
       </form>
