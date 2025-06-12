@@ -1,51 +1,50 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 
 export default function Login() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [showPass, setShowPass] = useState(false);
   const [error, setError] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
   const navigate = useNavigate();
+  const { login } = useAuth();
 
   const submit = e => {
     e.preventDefault();
-    setError('');
-    if (username === 'AboSaber' && password === 'AboSaberWebsite') {
-      localStorage.setItem('user', JSON.stringify({ username }));
-      navigate('/dashboard');
+    const res = login(username, password);
+    if (res.success) {
+      navigate(res.role === 'admin' ? '/dashboard' : '/home', { replace: true });
     } else {
-      setError('Invalid credentials');
+      setError(res.message);
     }
   };
 
   return (
-    <div className="flex items-center justify-center h-screen">
-      <form onSubmit={submit} className="bg-gray-800 p-8 rounded grid gap-4 w-80">
+    <div className="min-h-screen flex items-center justify-center bg-gray-900 text-white">
+      <form onSubmit={submit} className="bg-gray-800 p-8 rounded-xl w-80 space-y-4">
+        <h1 className="text-2xl font-bold text-center">تسجيل الدخول</h1>
         <input
-          className="p-2 bg-gray-700 text-white placeholder-gray-400 rounded"
+          type="text"
+          className="w-full p-2 rounded bg-gray-700 text-white placeholder-gray-400"
           placeholder="Username"
           value={username}
           onChange={e => setUsername(e.target.value)}
         />
         <div className="relative">
           <input
-            className="p-2 bg-gray-700 text-white placeholder-gray-400 rounded w-full"
-            type={showPassword ? 'text' : 'password'}
+            type={showPass ? 'text' : 'password'}
+            className="w-full p-2 rounded bg-gray-700 text-white placeholder-gray-400"
             placeholder="Password"
             value={password}
             onChange={e => setPassword(e.target.value)}
           />
-          <button
-            type="button"
-            onClick={() => setShowPassword(s => !s)}
-            className="absolute inset-y-0 right-0 flex items-center px-2 text-gray-300"
-          >
-            {showPassword ? '🙈' : '👁️'}
+          <button type="button" onClick={() => setShowPass(s => !s)} className="absolute inset-y-0 right-0 flex items-center px-2">
+            {showPass ? '🙈' : '👁️'}
           </button>
         </div>
-        {error && <p className="text-red-500 text-sm">{error}</p>}
-        <button className="bg-blue-600 p-2 rounded" type="submit">Login</button>
+        {error && <p className="text-red-500 text-sm text-center">{error}</p>}
+        <button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 p-2 rounded-md">Login</button>
       </form>
     </div>
   );
