@@ -1,4 +1,4 @@
-import { IsIn, IsInt, IsNotEmpty, IsOptional, IsString, Max, Min } from 'class-validator';
+﻿import { IsIn, IsInt, IsNotEmpty, IsOptional, IsString, Max, Min } from 'class-validator';
 
 export class CreateEmployeeDto {
   @IsString() @IsNotEmpty() firstName!: string;
@@ -18,3 +18,4 @@ export class UpdateEmployeeDto {
   @IsOptional() @IsString() departmentId?: string;
   @IsOptional() @IsInt() version?: number; // optimistic locking
 }
+

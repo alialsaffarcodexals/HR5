@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+﻿import { BadRequestException, Injectable } from '@nestjs/common';
 import { PrismaService } from '../../prisma.service';
 import { createHash } from 'crypto';
 import dayjs from 'dayjs';
@@ -91,3 +91,4 @@ export class PayrollService {
     return { filePath: run.filePath, content };
   }
 }
+

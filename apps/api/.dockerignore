@@ -1,0 +1,10 @@
+﻿node_modules
+.pnpm-store
+dist
+coverage
+.prisma/client
+.env
+.env.*
+*.local
+.git
+.gitignore

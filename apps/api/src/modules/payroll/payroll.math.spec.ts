@@ -1,4 +1,4 @@
-// Similar to other test files, the `.js` extension prevents ts-jest from
+﻿// Similar to other test files, the `.js` extension prevents ts-jest from
 // resolving the module during testing. Importing the TypeScript module without
 // the extension keeps the path valid for both the compiler and at runtime.
 import { calculateFortnightly } from '../../common';
@@ -11,3 +11,4 @@ describe('Payroll rounding', () => {
     expect(calculateFortnightly(96336.340)).toBe('3705.244');
   });
 });
+

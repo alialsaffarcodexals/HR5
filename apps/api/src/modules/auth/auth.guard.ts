@@ -1,4 +1,4 @@
-import { CanActivate, ExecutionContext, Injectable, SetMetadata, UnauthorizedException, ForbiddenException } from '@nestjs/common';
+﻿import { CanActivate, ExecutionContext, Injectable, SetMetadata, UnauthorizedException, ForbiddenException } from '@nestjs/common';
 import jwt from 'jsonwebtoken';
 
 export const Roles = (...roles: string[]) => SetMetadata('roles', roles);
@@ -23,3 +23,4 @@ export class JwtAuthGuard implements CanActivate {
     }
   }
 }
+

@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Param, Body, Query, Patch, Delete, UseGuards } from '@nestjs/common';
+﻿import { Controller, Get, Post, Param, Body, Query, Patch, Delete, UseGuards } from '@nestjs/common';
 import { EmployeesService } from './employees.service';
 import { CreateEmployeeDto, UpdateEmployeeDto } from './dto';
 import { JwtAuthGuard, Roles } from '../auth/auth.guard';
@@ -6,7 +6,7 @@ import { JwtAuthGuard, Roles } from '../auth/auth.guard';
 @Controller('employees')
 @UseGuards(JwtAuthGuard)
 export class EmployeesController {
-  constructor(private service: EmployeesService) {}
+  constructor(private readonly service: EmployeesService) {}
 
   @Get()
   @Roles('Admin','HRManager','DeptHead','PayrollClerk')

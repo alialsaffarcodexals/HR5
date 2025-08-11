@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+﻿import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { ThrottlerModule } from '@nestjs/throttler';
 // Import paths should be extensionless so that TypeScript can resolve them
@@ -24,3 +24,4 @@ import { MetricsModule } from './modules/metrics/metrics.module';
   ],
 })
 export class AppModule {}
+

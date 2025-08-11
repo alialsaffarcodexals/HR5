@@ -29,9 +29,11 @@ services:
   api:
     build: ./apps/api
     depends_on:
-      - db
-      - redis
-    env_file: .env.example
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    env_file: .env                   # use real env, not example
     environment:
       DATABASE_URL: ${DATABASE_URL}
       REDIS_URL: ${REDIS_URL}
@@ -44,19 +46,29 @@ services:
       - "4000:4000"
     volumes:
       - reports:/data/reports
+    # use Node to run compiled app (NOT pnpm)
+    command: ["node","dist/main.js"]
+    # healthcheck via Node fetch (no curl needed)
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:4000/api/healthz"]
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://localhost:4000/api/healthz').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+        ]
       interval: 10s
       timeout: 5s
       retries: 5
-    command: ["pnpm","start:prod"]
 
   worker:
     build: ./apps/api
     depends_on:
-      - db
-      - redis
-    env_file: .env.example
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    env_file: .env
     environment:
       DATABASE_URL: ${DATABASE_URL}
       REDIS_URL: ${REDIS_URL}
@@ -67,17 +79,18 @@ services:
       TIMEZONE: ${TIMEZONE}
     volumes:
       - reports:/data/reports
-    command: ["pnpm","worker"]
+    command: ["node","dist/worker.js"]
 
   web:
     build: ./apps/web
     depends_on:
-      - api
-    env_file: .env.example
+      api:
+        condition: service_started
+    env_file: .env
     environment:
       NEXTAUTH_URL: ${NEXTAUTH_URL}
       NEXTAUTH_SECRET: ${NEXTAUTH_SECRET}
-      API_BASE_URL: http://localhost:4000
+      API_BASE_URL: ${API_BASE_URL:-http://api:4000}  # container-to-container
     ports:
       - "3000:3000"
 

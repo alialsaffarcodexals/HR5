@@ -1,4 +1,4 @@
-// Test files run directly from the TypeScript sources via ts-jest. Including
+﻿// Test files run directly from the TypeScript sources via ts-jest. Including
 // the `.js` extension in imports forces Node to look for compiled JavaScript
 // files which don't exist when running tests.  By importing without the
 // extension we allow TypeScript to resolve the modules correctly in both test
@@ -34,3 +34,4 @@ describe.skip('Headship rules', () => {
     await expect(empSvc.update(head.id, { departmentId: d2.id, version: head.version })).rejects.toBeTruthy();
   });
 });
+

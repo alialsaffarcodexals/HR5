@@ -1,4 +1,4 @@
-import { PayrollService } from '../modules/payroll/payroll.service';
+﻿import { PayrollService } from '../modules/payroll/payroll.service';
 import { PrismaService } from '../prisma.service';
 
 async function run() {
@@ -11,3 +11,4 @@ async function run() {
   await prisma.$disconnect();
 }
 run();
+

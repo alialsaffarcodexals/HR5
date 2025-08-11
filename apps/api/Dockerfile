@@ -1,20 +1,18 @@
-FROM node:20-alpine AS deps
+# ---- build stage ----
+FROM node:20-bookworm-slim AS build
 WORKDIR /app
-COPY package.json pnpm-lock.yaml ../../package.json ./
-RUN corepack enable && pnpm -v
-RUN pnpm install --frozen-lockfile || true
-
-FROM node:20-alpine AS build
-WORKDIR /app
+RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates && rm -rf /var/lib/apt/lists/*
 COPY . .
-RUN corepack enable
-RUN pnpm install --frozen-lockfile
-RUN pnpm prisma generate
+RUN corepack enable && corepack prepare pnpm@9.0.0 --activate
+RUN pnpm install --no-frozen-lockfile
+RUN pnpm exec prisma generate
 RUN pnpm build
 
-FROM node:20-alpine
+# ---- runtime stage ----
+FROM node:20-bookworm-slim
 WORKDIR /app
 ENV NODE_ENV=production
-COPY --from=build /app .
+RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates && rm -rf /var/lib/apt/lists/*
+COPY --from=build /app ./
 EXPOSE 4000
 CMD ["node","dist/main.js"]

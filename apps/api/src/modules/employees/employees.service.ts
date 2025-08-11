@@ -1,7 +1,7 @@
-import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+﻿import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma.service';
 import { CreateEmployeeDto, UpdateEmployeeDto } from './dto';
-import { v4 as uuidv4 } from 'uuid';
+import { Prisma } from '@prisma/client';
 
 @Injectable()
 export class EmployeesService {
@@ -10,17 +10,21 @@ export class EmployeesService {
   async list(query = '', page = 1, sort = 'lastName') {
     const take = 20;
     const skip = (page - 1) * take;
-    const where = {
+
+    const where: Prisma.EmployeeWhereInput = {
       deletedAt: null,
       OR: [
-        { firstName: { contains: query, mode: 'insensitive' } },
-        { lastName: { contains: query, mode: 'insensitive' } },
-        { employeeId: { contains: query, mode: 'insensitive' } },
+        { firstName: { contains: query, mode: 'insensitive' as Prisma.QueryMode } },
+        { lastName:  { contains: query, mode: 'insensitive' as Prisma.QueryMode } },
+        { employeeId:{ contains: query, mode: 'insensitive' as Prisma.QueryMode } },
       ],
     };
-    const orderBy: any = sort === 'payScale' ? { payScale: 'asc' } :
+
+    const orderBy: any =
+      sort === 'payScale' ? { payScale: 'asc' } :
       sort === 'department' ? { departmentId: 'asc' } :
       { lastName: 'asc' };
+
     const [items, total] = await Promise.all([
       this.prisma.employee.findMany({ where, skip, take, orderBy }),
       this.prisma.employee.count({ where }),
@@ -35,13 +39,10 @@ export class EmployeesService {
   }
 
   async create(dto: CreateEmployeeDto) {
-    // validate department exists
     const dept = await this.prisma.department.findUnique({ where: { id: dto.departmentId } });
     if (!dept) throw new BadRequestException('Department not found');
     const employeeId = `E-${Date.now().toString(36)}-${Math.floor(Math.random()*1000)}`;
-    return this.prisma.employee.create({
-      data: { ...dto, employeeId },
-    });
+    return this.prisma.employee.create({ data: { ...dto, employeeId } });
   }
 
   async update(id: string, dto: UpdateEmployeeDto) {
@@ -49,7 +50,6 @@ export class EmployeesService {
     if (emp.isHead && dto.departmentId && dto.departmentId !== emp.departmentId) {
       throw new ConflictException('Head cannot be reassigned; transfer headship first.');
     }
-    // optimistic locking
     if (dto.version == null) throw new ConflictException('Missing version for update');
     const result = await this.prisma.employee.updateMany({
       where: { id, version: dto.version },

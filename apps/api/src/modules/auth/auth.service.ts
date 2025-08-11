@@ -1,4 +1,4 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+﻿import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { PrismaService } from '../../prisma.service';
 import * as argon2 from 'argon2';
 import jwt from 'jsonwebtoken';
@@ -16,3 +16,4 @@ export class AuthService {
     return { token, user: { id: user.id, email: user.email, role: user.role, name: user.name } };
   }
 }
+

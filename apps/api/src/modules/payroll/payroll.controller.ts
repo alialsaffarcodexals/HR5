@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Post, Res, UseGuards } from '@nestjs/common';
+﻿import { Body, Controller, Get, Param, Post, Res, UseGuards } from '@nestjs/common';
 import { PayrollService } from './payroll.service';
 import { JwtAuthGuard, Roles } from '../auth/auth.guard';
 import { Response } from 'express';
@@ -23,3 +23,4 @@ export class PayrollController {
     res.send(content);
   }
 }
+

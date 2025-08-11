@@ -1,0 +1,18 @@
+﻿# dependencies / build
+**/node_modules/
+**/.pnpm-store/
+**/dist/
+**/.next/
+**/coverage/
+**/out/
+**/build/
+**/tmp/
+
+# env & local
+.env
+.env.*
+*.local
+
+# data
+/data/
+data/

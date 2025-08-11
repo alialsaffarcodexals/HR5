@@ -1,4 +1,4 @@
-import { Controller, Get } from '@nestjs/common';
+﻿import { Controller, Get } from '@nestjs/common';
 import { PrismaService } from '../../prisma.service';
 import Redis from 'ioredis';
 
@@ -18,3 +18,4 @@ export class HealthController {
     return { ok: true };
   }
 }
+

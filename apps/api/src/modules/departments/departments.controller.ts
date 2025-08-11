@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, UseGuards } from '@nestjs/common';
+﻿import { Body, Controller, Delete, Get, Param, Patch, Post, UseGuards } from '@nestjs/common';
 import { DepartmentsService } from './departments.service';
 import { CreateDepartmentDto, UpdateDepartmentDto } from './dto';
 import { JwtAuthGuard, Roles } from '../auth/auth.guard';
@@ -40,3 +40,4 @@ export class DepartmentsController {
   @Roles('Admin','HRManager')
   setHead(@Param('id') id: string, @Body() body: { employeeId: string }) { return this.service.setHead(id, body.employeeId); }
 }
+

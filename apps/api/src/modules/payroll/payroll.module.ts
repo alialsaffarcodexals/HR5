@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+﻿import { Module } from '@nestjs/common';
 import { PayrollController } from './payroll.controller';
 import { PayrollService } from './payroll.service';
 import { PrismaService } from '../../prisma.service';
@@ -9,3 +9,4 @@ import { PrismaService } from '../../prisma.service';
   exports: [PayrollService],
 })
 export class PayrollModule {}
+
