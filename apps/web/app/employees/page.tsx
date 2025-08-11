@@ -4,10 +4,18 @@ import axios from 'axios';
 
 export default function Employees(){
   const [data,setData]=useState<any>({items:[]});
-  useEffect(()=>{
-    axios.get(`${process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:4000'}/api/employees`,{ headers: { Authorization: 'Bearer dev' } })
-      .then(r=>setData(r.data)).catch(()=>{});
-  },[]);
+  useEffect(() => {
+    const base =
+      process.env.NEXT_PUBLIC_API_BASE_URL ||
+      process.env.API_BASE_URL ||
+      'http://localhost:4000';
+    axios
+      .get(`${base}/api/employees`, {
+        headers: { Authorization: 'Bearer dev' },
+      })
+      .then((r) => setData(r.data))
+      .catch(() => {});
+  }, []);
   return (
     <div>
       <h1 className="text-xl font-semibold mb-4">Employees</h1>
