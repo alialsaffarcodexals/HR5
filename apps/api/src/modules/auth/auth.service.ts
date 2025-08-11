@@ -1,5 +1,5 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
-import { PrismaService } from '../../prisma.service.js';
+import { PrismaService } from '../../prisma.service';
 import * as argon2 from 'argon2';
 import jwt from 'jsonwebtoken';
 

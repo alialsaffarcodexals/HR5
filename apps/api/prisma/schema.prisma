@@ -15,6 +15,7 @@ model Department {
   location       String
   headEmployeeId String?
   employees      Employee[]
+  payrollLines   PayrollLine[]
   version        Int      @default(1)
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
@@ -38,7 +39,8 @@ model Employee {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  department   Department @relation(fields: [departmentId], references: [id])
+  department   Department   @relation(fields: [departmentId], references: [id])
+  payrollLines PayrollLine[]
 
   @@index([lastName])
   @@index([departmentId])

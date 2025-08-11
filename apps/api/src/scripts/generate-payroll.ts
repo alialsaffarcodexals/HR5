@@ -1,5 +1,5 @@
-import { PayrollService } from '../modules/payroll/payroll.service.js';
-import { PrismaService } from '../prisma.service.js';
+import { PayrollService } from '../modules/payroll/payroll.service';
+import { PrismaService } from '../prisma.service';
 
 async function run() {
   const prisma = new PrismaService();

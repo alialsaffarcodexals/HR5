@@ -1,5 +1,5 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
-import { PrismaService } from '../../prisma.service.js';
+import { PrismaService } from '../../prisma.service';
 import { createHash } from 'crypto';
 import dayjs from 'dayjs';
 import { Decimal } from '@prisma/client/runtime/library';
