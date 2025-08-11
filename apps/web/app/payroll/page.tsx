@@ -5,7 +5,15 @@ import axios from 'axios';
 export default function Payroll(){
   const [preview,setPreview]=useState('');
   async function run() {
-    const r = await axios.post(`${process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:4000'}/api/payroll/run`, {}, { headers: { Authorization: 'Bearer dev' } });
+    const base =
+      process.env.NEXT_PUBLIC_API_BASE_URL ||
+      process.env.API_BASE_URL ||
+      'http://localhost:4000';
+    const r = await axios.post(
+      `${base}/api/payroll/run`,
+      {},
+      { headers: { Authorization: 'Bearer dev' } }
+    );
     setPreview(r.data.preview);
   }
   return (
