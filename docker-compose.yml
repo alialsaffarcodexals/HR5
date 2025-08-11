@@ -1,0 +1,97 @@
+services:
+  db:
+    image: postgres:15
+    environment:
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: payroll
+    ports:
+      - "5432:5432"
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build: ./apps/api
+    depends_on:
+      - db
+      - redis
+    env_file: .env.example
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+      REDIS_URL: ${REDIS_URL}
+      REPORTS_DIR: ${REPORTS_DIR}
+      API_PORT: ${API_PORT}
+      JWT_SECRET: ${JWT_SECRET}
+      COMPANY_NAME: ${COMPANY_NAME}
+      TIMEZONE: ${TIMEZONE}
+    ports:
+      - "4000:4000"
+    volumes:
+      - reports:/data/reports
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4000/api/healthz"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    command: ["pnpm","start:prod"]
+
+  worker:
+    build: ./apps/api
+    depends_on:
+      - db
+      - redis
+    env_file: .env.example
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+      REDIS_URL: ${REDIS_URL}
+      REPORTS_DIR: ${REPORTS_DIR}
+      API_PORT: ${API_PORT}
+      JWT_SECRET: ${JWT_SECRET}
+      COMPANY_NAME: ${COMPANY_NAME}
+      TIMEZONE: ${TIMEZONE}
+    volumes:
+      - reports:/data/reports
+    command: ["pnpm","worker"]
+
+  web:
+    build: ./apps/web
+    depends_on:
+      - api
+    env_file: .env.example
+    environment:
+      NEXTAUTH_URL: ${NEXTAUTH_URL}
+      NEXTAUTH_SECRET: ${NEXTAUTH_SECRET}
+      API_BASE_URL: http://localhost:4000
+    ports:
+      - "3000:3000"
+
+  proxy:
+    image: nginx:1.27
+    depends_on:
+      - api
+      - web
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+
+volumes:
+  db_data:
+  redis_data:
+  reports:
