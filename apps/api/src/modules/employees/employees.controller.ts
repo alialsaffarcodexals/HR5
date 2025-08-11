@@ -1,7 +1,7 @@
 import { Controller, Get, Post, Param, Body, Query, Patch, Delete, UseGuards } from '@nestjs/common';
-import { EmployeesService } from './employees.service.js';
-import { CreateEmployeeDto, UpdateEmployeeDto } from './dto.js';
-import { JwtAuthGuard, Roles } from '../auth/auth.guard.js';
+import { EmployeesService } from './employees.service';
+import { CreateEmployeeDto, UpdateEmployeeDto } from './dto';
+import { JwtAuthGuard, Roles } from '../auth/auth.guard';
 
 @Controller('employees')
 @UseGuards(JwtAuthGuard)

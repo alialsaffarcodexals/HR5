@@ -1,6 +1,6 @@
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
-import { PrismaService } from '../../prisma.service.js';
-import { CreateDepartmentDto, UpdateDepartmentDto } from './dto.js';
+import { PrismaService } from '../../prisma.service';
+import { CreateDepartmentDto, UpdateDepartmentDto } from './dto';
 
 @Injectable()
 export class DepartmentsService {

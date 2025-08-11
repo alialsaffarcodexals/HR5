@@ -1,6 +1,6 @@
 import { Worker } from 'bullmq';
-import { PrismaService } from './prisma.service.js';
-import { PayrollService } from './modules/payroll/payroll.service.js';
+import { PrismaService } from './prisma.service';
+import { PayrollService } from './modules/payroll/payroll.service';
 
 const connection = { connection: { url: process.env.REDIS_URL || 'redis://localhost:6379' } };
 

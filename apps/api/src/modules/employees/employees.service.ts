@@ -1,6 +1,6 @@
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
-import { PrismaService } from '../../prisma.service.js';
-import { CreateEmployeeDto, UpdateEmployeeDto } from './dto.js';
+import { PrismaService } from '../../prisma.service';
+import { CreateEmployeeDto, UpdateEmployeeDto } from './dto';
 import { v4 as uuidv4 } from 'uuid';
 
 @Injectable()

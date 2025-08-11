@@ -1,5 +1,5 @@
 import { Controller, Get } from '@nestjs/common';
-import { PrismaService } from '../../prisma.service.js';
+import { PrismaService } from '../../prisma.service';
 import Redis from 'ioredis';
 
 @Controller()

@@ -1,7 +1,7 @@
 import { Body, Controller, Delete, Get, Param, Patch, Post, UseGuards } from '@nestjs/common';
-import { DepartmentsService } from './departments.service.js';
-import { CreateDepartmentDto, UpdateDepartmentDto } from './dto.js';
-import { JwtAuthGuard, Roles } from '../auth/auth.guard.js';
+import { DepartmentsService } from './departments.service';
+import { CreateDepartmentDto, UpdateDepartmentDto } from './dto';
+import { JwtAuthGuard, Roles } from '../auth/auth.guard';
 
 @Controller('departments')
 @UseGuards(JwtAuthGuard)
